@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fast 3D Dice & Coin Simulator</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #1a2980, #26d0ce);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 30px 20px;
+    color: #fff;
+    text-align: center;
+    position: relative;
+    overflow-x: hidden;
+  }
+  
+  body::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" opacity="0.05"><circle cx="50" cy="50" r="40" stroke="white" stroke-width="2" fill="none" /><path d="M50,10 A40,40 0 1,1 50,90 A40,40 0 1,1 50,10 Z" stroke="white" stroke-width="1" fill="none" /></svg>');
+    pointer-events: none;
+  }
+  
+  .container {
+    max-width: 800px;
+    width: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    z-index: 1;
+    animation: containerAppear 0.8s ease-out;
+  }
+  
+  @keyframes containerAppear {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  
+  h1 {
+    margin-bottom: 20px;
+    text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.6);
+    font-size: 2.8rem;
+    color: #FFD700;
+    animation: titleGlow 2s infinite alternate;
+  }
+  
+  @keyframes titleGlow {
+    from { text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.6); }
+    to { text-shadow: 0 0 15px #FFD700, 2px 2px 8px rgba(0, 0, 0, 0.6); }
+  }
+  
+  .subtitle {
+    margin-bottom: 30px;
+    font-size: 1.2rem;
+    color: #f8f8f8;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  
+  .controls {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-bottom: 30px;
+  }
+  
+  button {
+    padding: 18px 30px;
+    font-size: 1.2rem;
+    border-radius: 50px;
+    border: none;
+    outline: none;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  }
+  
+  button:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+  }
+  
+  button:active {
+    transform: translateY(0);
+  }
+  
+  #diceBtn {
+    background: linear-gradient(135deg, #FF416C, #FF4B2B);
+    color: white;
+  }
+  
+  #coinBtn {
+    background: linear-gradient(135deg, #00c6ff, #0072ff);
+    color: white;
+  }
+  
+  .result-container {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    padding: 25px;
+    margin-top: 20px;
+    min-height: 400px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .result-container::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 5px;
+    background: linear-gradient(90deg, #FF416C, #0072ff);
+  }
+  
+  /* 3D Dice Styles */
+  .dice-container {
+    width: 120px;
+    height: 120px;
+    position: relative;
+    margin: 20px auto;
+    transform-style: preserve-3d;
+    transform: rotateX(25deg) rotateY(25deg);
+    transition: transform 1.2s ease-out;
+  }
+  
+  .dice {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    background: white;
+    border-radius: 12px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.4), 0 0 20px rgba(0, 0, 0, 0.3);
+  }
+  
+  .dot {
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    background: #111;
+    border-radius: 50%;
+    box-shadow: inset 2px 2px 4px rgba(255,255,255,0.4);
+  }
+  
+  /* Dice faces */
+  .front { transform: translateZ(60px); }
+  .back { transform: translateZ(-60px) rotateY(180deg); }
+  .right { transform: translateX(60px) rotateY(90deg); }
+  .left { transform: translateX(-60px) rotateY(-90deg); }
+  .top { transform: translateY(-60px) rotateX(90deg); }
+  .bottom { transform: translateY(60px) rotateX(-90deg); }
+  
+  /* Dot positions for each face */
+  .front .dot { top: 50%; left: 50%; transform: translate(-50%, -50%); }
+  
+  .back .dot:nth-child(1) { top: 25%; left: 25%; }
+  .back .dot:nth-child(2) { bottom: 25%; right: 25%; }
+  
+  .right .dot:nth-child(1) { top: 25%; left: 25%; }
+  .right .dot:nth-child(2) { top: 50%; left: 50%; transform: translate(-50%, -50%); }
+  .right .dot:nth-child(3) { bottom: 25%; right: 25%; }
+  
+  .left .dot:nth-child(1) { top: 25%; left: 25%; }
+  .left .dot:nth-child(2) { top: 25%; right: 25%; }
+  .left .dot:nth-child(3) { bottom: 25%; left: 25%; }
+  .left .dot:nth-child(4) { bottom: 25%; right: 25%; }
+  
+  .top .dot:nth-child(1) { top: 25%; left: 25%; }
+  .top .dot:nth-child(2) { top: 25%; right: 25%; }
+  .top .dot:nth-child(3) { top: 50%; left: 50%; transform: translate(-50%, -50%); }
+  .top .dot:nth-child(4) { bottom: 25%; left: 25%; }
+  .top .dot:nth-child(5) { bottom: 25%; right: 25%; }
+  
+  .bottom .dot:nth-child(1) { top: 25%; left: 25%; }
+  .bottom .dot:nth-child(2) { top: 25%; right: 25%; }
+  .bottom .dot:nth-child(3) { bottom: 25%; left: 25%; }
+  .bottom .dot:nth-child(4) { bottom: 25%; right: 25%; }
+  .bottom .dot:nth-child(5) { top: 50%; left: 50%; transform: translate(-50%, -50%); }
+  .bottom .dot:nth-child(6) { bottom: 50%; right: 50%; transform: translate(50%, 50%); }
+  
+  /* 3D Coin Styles */
+  .coin-container {
+    width: 150px;
+    height: 150px;
+    position: relative;
+    margin: 20px auto;
+    transform-style: preserve-3d;
+  }
+  
+  .coin {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    border-radius: 50%;
+    backface-visibility: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+    font-size: 28px;
+    color: #333;
+    box-shadow: inset 0 0 25px rgba(0, 0, 0, 0.4), 0 0 15px rgba(0, 0, 0, 0.3);
+    transition: transform 1.2s ease-out;
+  }
+  
+  .heads {
+    background: linear-gradient(45deg, #D4AF37, #FFD700, #CFB53B);
+    border: 10px solid #b38b22;
+    z-index: 2;
+  }
+  
+  .tails {
+    background: linear-gradient(45deg, #c0c0c0, #f8f8f8, #c0c0c0);
+    border: 10px solid #a0a0a0;
+    transform: rotateY(180deg);
+  }
+  
+  .coin-edge {
+    position: absolute;
+    width: 100%;
+    height: 20px;
+    background: linear-gradient(45deg, #b38b22, #FFD700, #b38b22);
+    top: 50%;
+    transform: translateY(-50%) rotateX(90deg);
+    border-radius: 10px;
+  }
+  
+  .rolling {
+    animation: rollDice 1.2s ease-out;
+  }
+  
+  .flipping {
+    animation: flipCoin 1.2s ease-out;
+  }
+  
+  @keyframes rollDice {
+    0% { transform: rotateX(0) rotateY(0) rotateZ(0) scale(1); }
+    20% { transform: rotateX(180deg) rotateY(360deg) rotateZ(90deg) scale(1.1); }
+    40% { transform: rotateX(360deg) rotateY(540deg) rotateZ(180deg) scale(1); }
+    60% { transform: rotateX(540deg) rotateY(720deg) rotateZ(270deg) scale(1.1); }
+    80% { transform: rotateX(720deg) rotateY(900deg) rotateZ(360deg) scale(1); }
+    100% { transform: rotateX(810deg) rotateY(1080deg) rotateZ(450deg) scale(1); }
+  }
+  
+  @keyframes flipCoin {
+    0% { transform: rotateY(0) scale(1); }
+    20% { transform: rotateY(360deg) scale(1.1); }
+    40% { transform: rotateY(720deg) scale(1); }
+    60% { transform: rotateY(1080deg) scale(1.1); }
+    80% { transform: rotateY(1440deg) scale(1); }
+    100% { transform: rotateY(1800deg) scale(1); }
+  }
+  
+  #textResult {
+    margin-top: 20px;
+    font-size: 1.8rem;
+    font-weight: bold;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    color: #FFD700;
+    padding: 10px 20px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.3);
+    animation: resultAppear 0.5s ease-out;
+  }
+  
+  @keyframes resultAppear {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  .prediction-note {
+    margin-top: 25px;
+    font-size: 1rem;
+    color: #ccc;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 15px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 10px;
+  }
+  
+  .prediction-note i {
+    color: #FFD700;
+    margin-right: 8px;
+  }
+  
+  .history {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+  }
+  
+  .history-item {
+    padding: 8px 15px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50px;
+    font-size: 0.9rem;
+  }
+  
+  @media (max-width: 600px) {
+    h1 {
+      font-size: 2.2rem;
+    }
+    
+    button {
+      padding: 15px 25px;
+      font-size: 1rem;
+    }
+    
+    .dice-container {
+      width: 100px;
+      height: 100px;
+    }
+    
+    .coin-container {
+      width: 120px;
+      height: 120px;
+    }
+    
+    #textResult {
+      font-size: 1.5rem;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1><i class="fas fa-dice"></i> Fast 3D Dice & Coin <i class="fas fa-coins"></i></h1>
+  <p class="subtitle">Experience realistic 3D animations with immediate response</p>
+  
+  <div class="controls">
+    <button id="diceBtn" onclick="rollDice()">
+      <i class="fas fa-dice"></i> Roll Dice
+    </button>
+    <button id="coinBtn" onclick="flipCoin()">
+      <i class="fas fa-coins"></i> Flip Coin
+    </button>
+  </div>
+  
+  <div class="result-container">
+    <div id="diceContainer" class="dice-container" style="display: none;">
+      <div class="dice front"><div class="dot"></div></div>
+      <div class="dice back"><div class="dot"></div><div class="dot"></div></div>
+      <div class="dice right"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+      <div class="dice left"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+      <div class="dice top"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+      <div class="dice bottom"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+    </div>
+    
+    <div id="coinContainer" class="coin-container" style="display: none;">
+      <div class="coin heads">H</div>
+      <div class="coin tails">T</div>
+      <div class="coin-edge"></div>
+    </div>
+    
+    <div id="textResult">Click a button to start!</div>
+    
+    <div class="history">
+      <div class="history-item">Last roll: <span id="lastDice">-</span></div>
+      <div class="history-item">Last flip: <span id="lastCoin">-</span></div>
+    </div>
+  </div>
+  
+  <div class="prediction-note">
+    <i class="fas fa-info-circle"></i> This simulator uses a fixed seed, making the results predictable and reproducible for testing purposes.
+  </div>
+</div>
+
+<script>
+// Fixed internal seed
+const FIXED_SEED = 987654321;
+
+// Seeded PRNG (Mulberry32)
+function mulberry32(seed) {
+  return function() {
+    let t = seed += 0x6D2B79F5;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+}
+
+const rng = mulberry32(FIXED_SEED);
+let isAnimating = false;
+
+// Dice roll
+function rollDice() {
+  if (isAnimating) return;
+  isAnimating = true;
+
+  document.getElementById('diceContainer').style.display = 'block';
+  document.getElementById('coinContainer').style.display = 'none';
+
+  let value = rng();
+  let diceNumber = Math.floor(value * 6) + 1;
+  console.log("Dice value (predictable):", value, "Dice face:", diceNumber);
+
+  const diceContainer = document.getElementById('diceContainer');
+  diceContainer.classList.add('rolling');
+
+  setTimeout(() => {
+    diceContainer.classList.remove('rolling');
+
+    // ✅ Fixed mapping for dice numbers
+const rotations = {
+  1: 'rotateX(0deg) rotateY(0deg)',        // front (1)
+  2: 'rotateX(0deg) rotateY(180deg)',      // back (2)
+  3: 'rotateX(0deg) rotateY(-90deg)',      // right (3)
+  4: 'rotateX(0deg) rotateY(90deg)',       // left (4)
+  5: 'rotateX(-90deg) rotateY(0deg)',      // top (5)
+  6: 'rotateX(90deg) rotateY(0deg)'        // bottom (6) ✅ fixed
+};
+
+
+
+    diceContainer.style.transform = rotations[diceNumber];
+
+    document.getElementById("textResult").innerHTML = `Dice rolled: ${diceNumber}`;
+    document.getElementById("lastDice").textContent = diceNumber;
+
+    isAnimating = false;
+  }, 1200);
+}
+
+// Coin flip
+function flipCoin() {
+  if (isAnimating) return;
+  isAnimating = true;
+
+  document.getElementById('coinContainer').style.display = 'block';
+  document.getElementById('diceContainer').style.display = 'none';
+
+  let value = rng();
+  let coinSide = value < 0.5 ? "Heads" : "Tails";
+  console.log("Coin value (predictable):", value, "Coin side:", coinSide);
+
+  const coinContainer = document.getElementById('coinContainer');
+  const headsCoin = coinContainer.querySelector('.heads');
+  const tailsCoin = coinContainer.querySelector('.tails');
+
+  headsCoin.classList.remove('flipping');
+  tailsCoin.classList.remove('flipping');
+  headsCoin.style.transform = 'rotateY(0deg)';
+  tailsCoin.style.transform = 'rotateY(180deg)';
+
+  headsCoin.classList.add('flipping');
+  tailsCoin.classList.add('flipping');
+
+  setTimeout(() => {
+    headsCoin.classList.remove('flipping');
+    tailsCoin.classList.remove('flipping');
+
+    // ✅ Fixed logic for heads/tails final position
+    if (coinSide === "Heads") {
+      headsCoin.style.transform = 'rotateY(0deg)';
+      tailsCoin.style.transform = 'rotateY(180deg)';
+    } else {
+      headsCoin.style.transform = 'rotateY(180deg)';
+      tailsCoin.style.transform = 'rotateY(0deg)';
+    }
+
+    document.getElementById("textResult").innerHTML = `Coin flipped: ${coinSide}`;
+    document.getElementById("lastCoin").textContent = coinSide;
+
+    isAnimating = false;
+  }, 1200);
+}
+</script>
+
+
+</body>
+</html>
